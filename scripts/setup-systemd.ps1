@@ -1,7 +1,7 @@
 param(
     [string]$RepoRoot = (Resolve-Path ".").Path,
     [string]$ServiceUser = "findsenryu",
-    [string]$InstallDir = "/opt/findsenryu",
+    [string]$InstallDir = "/root/projects/FindSenryu4Discord",
     [string]$ServiceName = "findsenryu.service"
 )
 
