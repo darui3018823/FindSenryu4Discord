@@ -59,7 +59,7 @@ if (-not (Test-Path (Join-Path $InstallDir "data"))) {
 }
 
 # Permissions for service user
-& chown -R "$ServiceUser:$ServiceUser" $InstallDir
+& chown -R "${ServiceUser}:${ServiceUser}" $InstallDir
 
 # Write systemd unit
 $unitContent = @"
