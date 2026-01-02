@@ -4,9 +4,9 @@ go 1.24.0
 
 require (
 	github.com/0x307e/go-haiku v0.0.0-20260102132348-2d52455731fb
-	github.com/BurntSushi/toml v1.6.0
 	github.com/darui3018823/discordgo v0.29.0-patched-2
 	github.com/jinzhu/gorm v1.9.16
+	github.com/joho/godotenv v1.5.1
 	github.com/ledisdb/ledisdb v0.0.0-20200510135210-d35789ec47e6
 	github.com/mattn/go-sqlite3 v1.14.33
 )
@@ -17,7 +17,6 @@ require (
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
-	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/siddontang/go v0.0.0-20180604090527-bdc77568d726 // indirect
 	github.com/siddontang/rdb v0.0.0-20150307021120-fc89ed2e418d // indirect
