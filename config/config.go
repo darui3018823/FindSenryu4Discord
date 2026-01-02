@@ -16,6 +16,11 @@ type Config struct {
 		Playing  string
 		ClientID string
 	}
+	CDN struct {
+		Token       string
+		UploadURL   string
+		QuoteAPIURL string
+	}
 }
 
 func init() {
@@ -28,6 +33,9 @@ func init() {
 	conf.Discord.Token = os.Getenv("DISCORD_TOKEN")
 	conf.Discord.Playing = os.Getenv("DISCORD_PLAYING")
 	conf.Discord.ClientID = os.Getenv("DISCORD_CLIENT_ID")
+	conf.CDN.Token = os.Getenv("CDN_TOKEN")
+	conf.CDN.UploadURL = os.Getenv("CDN_UPLOAD_URL")
+	conf.CDN.QuoteAPIURL = os.Getenv("QUOTE_API_URL")
 
 	if conf.Discord.Token == "" {
 		log.Fatal("DISCORD_TOKEN is required")

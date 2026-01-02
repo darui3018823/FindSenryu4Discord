@@ -13,9 +13,9 @@ import (
 	"github.com/u16-io/FindSenryu4Discord/model"
 	"github.com/u16-io/FindSenryu4Discord/service"
 
-	"github.com/u16-io/FindSenryu4Discord/config"
 	"github.com/0x307e/go-haiku"
 	"github.com/darui3018823/discordgo"
+	"github.com/u16-io/FindSenryu4Discord/config"
 )
 
 var (
@@ -32,12 +32,17 @@ var (
 			Name:        "rank",
 			Description: "ギルド内で詠んだ回数が多い人のランキングを表示します",
 		},
+		{
+			Name: "川柳を画像化",
+			Type: discordgo.MessageApplicationCommand,
+		},
 	}
 
 	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
 		"mute":   handleMuteCommand,
 		"unmute": handleUnmuteCommand,
 		"rank":   handleRankCommand,
+		"川柳を画像化": handleSenryuMiqContext,
 	}
 )
 
