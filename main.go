@@ -15,7 +15,7 @@ import (
 
 	"github.com/u16-io/FindSenryu4Discord/config"
 	"github.com/0x307e/go-haiku"
-	"github.com/bwmarrin/discordgo"
+	"github.com/darui3018823/discordgo"
 )
 
 var (
