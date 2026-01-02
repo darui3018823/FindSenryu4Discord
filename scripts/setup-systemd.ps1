@@ -1,95 +1,141 @@
+# 🛠️ FindSenryu4Discord Setup Script (PowerShell for Linux)
+# 初回/再構築: ビルド + 配置 + systemd unit 作成/更新 + 起動
+
+[CmdletBinding()]
 param(
-    [string]$RepoRoot = (Resolve-Path ".").Path,
-    [string]$ServiceUser = "findsenryu",
-    [string]$InstallDir = "/root/projects/FindSenryu4Discord",
-    [string]$ServiceName = "findsenryu.service"
+    [string]$ServiceName = 'findsenryu',
+    [string]$User = 'root',
+    [string]$Group = 'root',
+    [string]$DeployDir = '/root/projects/FindSenryu4Discord',
+    [string]$BinaryName = 'findsenryu',
+    [switch]$Force
 )
 
-if (-not $IsLinux) {
-    Write-Error "This script must run on Linux with systemd." -ErrorAction Stop
-}
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
-if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
-    Write-Error "Go toolchain is required but was not found in PATH." -ErrorAction Stop
-}
+function Step { param([string]$m) Write-Host "[STEP] $m" }
+function Info { param([string]$m) Write-Host "ℹ️  $m" }
+function Ok { param([string]$m) Write-Host "✅ $m" }
+function Warn { param([string]$m) Write-Host "⚠️  $m" }
+function Err { param([string]$m) Write-Host "❌ $m" }
 
-$servicePath = "/etc/systemd/system/$ServiceName"
+if(-not $IsLinux){ Err 'Linux (systemd) 専用'; exit 1 }
+if(-not (Get-Command systemctl -ErrorAction SilentlyContinue)){ Err 'systemctl がありません'; exit 1 }
+if(-not (Get-Command go -ErrorAction SilentlyContinue)){ Err 'go コマンドがありません'; exit 1 }
 
-# Ensure service user exists
-$null = & id -u $ServiceUser 2>$null
-if ($LASTEXITCODE -ne 0) {
-    & useradd --system --home $InstallDir --shell /usr/sbin/nologin $ServiceUser
-}
-
-# Prepare install directory
-if (-not (Test-Path $InstallDir)) {
-    New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-}
-
-# Build binary into install directory
+$RepoRoot = $DeployDir
 Push-Location $RepoRoot
 try {
-    & go build -o "$InstallDir/findsenryu"
-    if ($LASTEXITCODE -ne 0) {
-        throw "go build failed with exit code $LASTEXITCODE"
+    Write-Host "🛠️  Setup 開始 (service=$ServiceName deploy=$DeployDir)"
+
+    # 既存停止
+    if(& systemctl list-units --type=service --all | Select-String -Quiet "^$ServiceName.service"){
+        Step '既存サービス停止'
+        sudo systemctl stop $ServiceName || $true
+        
+        # 既存のサービスを無効化して完全に削除（再作成のため）
+        sudo systemctl disable $ServiceName || $true
+        sudo rm "/etc/systemd/system/$ServiceName.service" || $true
+        sudo systemctl daemon-reload
+        Info '既存サービスを完全に削除しました（再作成のため）'
+    } else { Info '既存サービスなし' }
+
+    # デプロイ先ディレクトリ確認
+    if(-not (Test-Path $DeployDir)){
+        Err "DeployDir が存在しません: $DeployDir"
+        exit 1
     }
-}
-finally {
-    Pop-Location
-}
+    Info "DeployDir 確認完了: $DeployDir"
 
-# Place config.toml if missing
-if (-not (Test-Path "$InstallDir/config.toml")) {
-    if (Test-Path (Join-Path $RepoRoot "config.toml")) {
-        Copy-Item (Join-Path $RepoRoot "config.toml") "$InstallDir/config.toml"
-    } elseif (Test-Path (Join-Path $RepoRoot "sample.config.toml")) {
-        Copy-Item (Join-Path $RepoRoot "sample.config.toml") "$InstallDir/config.toml"
-    } else {
-        Write-Error "No config.toml or sample.config.toml found in repo. Create one before running." -ErrorAction Stop
+    # .env 生成 (存在しない場合)
+    $EnvFile = Join-Path $DeployDir '.env'
+    if(-not (Test-Path $EnvFile) -or $Force){
+        Step '.env 生成'
+        $token = Read-Host "Discord Bot Token を入力してください"
+        $playing = Read-Host "Playing ステータス (Optional, Enter for empty)"
+        $clientId = Read-Host "Client ID (Optional, Enter for empty)"
+        
+@"
+DISCORD_TOKEN=$token
+DISCORD_PLAYING=$playing
+DISCORD_CLIENT_ID=$clientId
+"@ | sudo tee $EnvFile > $null
+        sudo chown "${User}:${Group}" $EnvFile
+        sudo chmod 600 $EnvFile
+        Ok ".env を生成しました"
+    } else { 
+        Info '.env 既存 ( --Force で再生成 )'
     }
-}
 
-# Ensure data directory for SQLite/Ledis
-if (-not (Test-Path (Join-Path $InstallDir "data"))) {
-    New-Item -ItemType Directory -Path (Join-Path $InstallDir "data") -Force | Out-Null
-}
+    # ビルド
+    $BinaryPath = Join-Path $DeployDir $BinaryName
+    Step 'ビルド'
+    $Tmp = "$BinaryPath.new"
+    bash -c "go build -o '$Tmp' -ldflags '-s -w' ." 2>&1 | ForEach-Object { $_ }
+    if(-not (Test-Path $Tmp)){ throw 'ビルド成果物なし' }
+    sudo mv $Tmp $BinaryPath
+    sudo chmod +x $BinaryPath
+    Ok "バイナリ配置: $BinaryPath"
 
-# Permissions for service user
-& chown -R "${ServiceUser}:${ServiceUser}" $InstallDir
+    # データディレクトリ作成
+    Step 'データディレクトリ準備'
+    if(-not (Test-Path "$DeployDir/data")){ sudo mkdir -p "$DeployDir/data" }
+    sudo chown -R "${User}:${Group}" "$DeployDir/data"
+    sudo chmod -R 755 "$DeployDir/data"
+    Ok "データディレクトリ準備完了"
 
-# Write systemd unit
-$unitContent = @"
+    # systemd unit
+    Step 'systemd unit 作成/更新'
+    $UnitPath = "/etc/systemd/system/$ServiceName.service"
+    $Unit = @"
 [Unit]
-Description=FindSenryu4Discord bot (systemd)
-After=network-online.target
-Wants=network-online.target
+Description=FindSenryu4Discord Bot
+After=network.target
+Wants=network.target
 
 [Service]
 Type=simple
-User=$ServiceUser
-Group=$ServiceUser
-WorkingDirectory=$InstallDir
-ExecStart=$InstallDir/findsenryu
-Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+User=$User
+Group=$Group
+WorkingDirectory=$DeployDir
+ExecStart=$DeployDir/$BinaryName
 Restart=on-failure
-RestartSec=3
-RuntimeDirectory=findsenryu
+RestartSec=10
+LimitNOFILE=65535
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=false
+ReadWritePaths=$DeployDir/data
 
 [Install]
 WantedBy=multi-user.target
 "@
-
-Set-Content -Path $servicePath -Value $unitContent -Encoding ascii
-
-& systemctl daemon-reload
-& systemctl enable --now $ServiceName
-
-$confPath = Join-Path $InstallDir "config.toml"
-$tokenSet = Select-String -Path $confPath -Pattern '^\s*Token\s*=\s*"\s*[^"\s]+' -Quiet
-if ($tokenSet) {
-    Write-Host "Systemd unit installed and started: $ServiceName"
-    Write-Host "Config found at $confPath (Token appears non-empty)."
-} else {
-    Write-Host "Systemd unit installed and started: $ServiceName"
-    Write-Warning "Token appears empty in $confPath. Edit it to set your Discord token and settings."
+    $Unit | sudo tee $UnitPath > $null
+    
+    Step 'systemd reload & enable & start'
+    sudo systemctl daemon-reload
+    sudo systemctl enable $ServiceName
+    sudo systemctl start $ServiceName
+    $state = (& systemctl is-active $ServiceName 2>$null).Trim()
+    Ok "サービス起動 state=$state"
+    
+    Write-Host ""
+    Write-Host "📋 確認コマンド:"
+    Write-Host "  ステータス: sudo systemctl status $ServiceName"
+    Write-Host "  ログ:       sudo journalctl -u $ServiceName -f"
+    Write-Host "  再起動:     sudo systemctl restart $ServiceName"
+    Write-Host "  停止:       sudo systemctl stop $ServiceName"
+    Write-Host ""
+    Write-Host '🎉 Setup 完了'
 }
+catch {
+    Err "エラー: $($_.Exception.Message)"
+    exit 1
+}
+finally { Pop-Location }
