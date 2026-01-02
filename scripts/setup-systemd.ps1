@@ -84,5 +84,12 @@ Set-Content -Path $servicePath -Value $unitContent -Encoding ascii
 & systemctl daemon-reload
 & systemctl enable --now $ServiceName
 
-Write-Host "Systemd unit installed and started: $ServiceName"
-Write-Host "Edit $InstallDir/config.toml to set your Discord token and settings."
+$confPath = Join-Path $InstallDir "config.toml"
+$tokenSet = Select-String -Path $confPath -Pattern '^\s*Token\s*=\s*"\s*[^"\s]+' -Quiet
+if ($tokenSet) {
+    Write-Host "Systemd unit installed and started: $ServiceName"
+    Write-Host "Config found at $confPath (Token appears non-empty)."
+} else {
+    Write-Host "Systemd unit installed and started: $ServiceName"
+    Write-Warning "Token appears empty in $confPath. Edit it to set your Discord token and settings."
+}
