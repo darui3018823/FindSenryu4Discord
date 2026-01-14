@@ -146,6 +146,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 						Simogo:    senryu[2],
 					},
 				)
+				// Cache author's avatar for MIQ feature
+				go cacheUserAvatarFromMember(s, m.GuildID, m.Author)
 				s.ChannelMessageSendReply(
 					m.ChannelID,
 					fmt.Sprintf("川柳を検出しました！\n「%s」", h[0]),
@@ -264,12 +266,16 @@ func handleYomeYomuna(m *discordgo.MessageCreate, s *discordgo.Session) bool {
 		if len(senryus) == 0 {
 			s.ChannelMessageSend(m.ChannelID, "まだ誰も詠んでいません。あなたが先に詠んでください。")
 		} else {
-			s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("ここで一句\n「%s」\n詠み手: %s",
+			msg, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("ここで一句\n「%s」\n詠み手: %s",
 				strings.Join([]string{
 					senryus[0].Kamigo,
 					senryus[1].Nakasichi,
 					senryus[2].Simogo,
 				}, " "), strings.Join(getWriters(senryus, m.GuildID, s), ", ")))
+			if err == nil && msg != nil {
+				// Save author IDs for MIQ lookup
+				service.SaveYomeMessage(msg.ID, senryus[0].AuthorID, senryus[1].AuthorID, senryus[2].AuthorID)
+			}
 		}
 		return true
 	case "詠むな":
@@ -313,4 +319,16 @@ func getWriters(senryus []model.Senryu, guildID string, session *discordgo.Sessi
 		}
 	}
 	return sliceUnique(writers)
+}
+
+// cacheUserAvatarFromMember caches a user's avatar for the MIQ feature
+func cacheUserAvatarFromMember(s *discordgo.Session, guildID string, user *discordgo.User) {
+	if user == nil {
+		return
+	}
+	member, _ := s.GuildMember(guildID, user.ID)
+	avatarURL := getMemberAvatarURL(member, user, "")
+	if avatarURL != "" {
+		cacheUserAvatar(user.ID, avatarURL)
+	}
 }
