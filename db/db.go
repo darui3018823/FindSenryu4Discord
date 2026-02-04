@@ -34,7 +34,7 @@ func initDB() {
 	if err != nil {
 		panic(err)
 	}
-	DB.AutoMigrate(&model.Senryu{}, &model.YomeMessage{})
+	DB.AutoMigrate(&model.Senryu{}, &model.YomeMessage{}, &model.AvatarCache{})
 }
 
 // Close is closing db

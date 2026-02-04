@@ -17,6 +17,8 @@ import (
 
 	"github.com/darui3018823/discordgo"
 	"github.com/u16-io/FindSenryu4Discord/config"
+	"github.com/u16-io/FindSenryu4Discord/db"
+	"github.com/u16-io/FindSenryu4Discord/model"
 	"github.com/u16-io/FindSenryu4Discord/service"
 )
 
@@ -199,12 +201,14 @@ func handleSenryuMiqContext(s *discordgo.Session, i *discordgo.InteractionCreate
 			if err == nil {
 				member, _ := s.GuildMember(i.GuildID, selectedAuthorID)
 				avatarURL = getMemberAvatarURL(member, user, botAvatarURL)
-				// Cache avatar locally
-				go cacheUserAvatar(user.ID, avatarURL)
-				// Upload to CDN for Quote API
-				cdnAvatarURL, err := uploadAvatarToCDN(user.ID, avatarURL)
-				if err == nil {
-					avatarURL = cdnAvatarURL
+				// Use DB cache for avatar
+				cachedURL := getAvatarURL(user.ID)
+				if cachedURL != "" {
+					avatarURL = cachedURL
+				} else {
+					// Fallback to Discord URL directly and cache it
+					// Note: avatarURL from getMemberAvatarURL is already Discord CDN URL
+					go saveAvatarURL(user.ID, avatarURL)
 				}
 				username = user.Username
 				displayName = user.GlobalName
@@ -462,90 +466,23 @@ func randomString(n int) string {
 	return string(b)
 }
 
-const AvatarCacheDir = "./temp/avatar"
-
-// cacheUserAvatar downloads and caches the user's avatar locally
-func cacheUserAvatar(userID, avatarURL string) {
-	if avatarURL == "" {
-		return
+// getAvatarURL retrieves the cached avatar URL from DB
+func getAvatarURL(userID string) string {
+	var avatar model.AvatarCache
+	if err := db.DB.First(&avatar, "user_id = ?", userID).Error; err != nil {
+		return ""
 	}
-
-	if err := os.MkdirAll(AvatarCacheDir, 0755); err != nil {
-		log.Printf("[Avatar Cache] Failed to create cache dir: %v", err)
-		return
-	}
-
-	resp, err := http.Get(avatarURL)
-	if err != nil {
-		log.Printf("[Avatar Cache] Failed to download avatar for %s: %v", userID, err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		log.Printf("[Avatar Cache] Failed to download avatar for %s: status %d", userID, resp.StatusCode)
-		return
-	}
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Printf("[Avatar Cache] Failed to read avatar data for %s: %v", userID, err)
-		return
-	}
-
-	cachePath := filepath.Join(AvatarCacheDir, userID+".png")
-	if err := os.WriteFile(cachePath, data, 0644); err != nil {
-		log.Printf("[Avatar Cache] Failed to write cache file for %s: %v", userID, err)
-		return
-	}
-
-	log.Printf("[Avatar Cache] Cached avatar for user %s", userID)
+	return avatar.AvatarURL
 }
 
-// uploadAvatarToCDN uploads the user's avatar to CDN and returns the CDN URL
-func uploadAvatarToCDN(userID, avatarURL string) (string, error) {
-	// First try to use cached avatar
-	cachePath := filepath.Join(AvatarCacheDir, userID+".png")
-	var avatarData []byte
-	var err error
-
-	if _, err := os.Stat(cachePath); err == nil {
-		// Use cached file
-		avatarData, err = os.ReadFile(cachePath)
-		if err != nil {
-			log.Printf("[Avatar CDN] Failed to read cache, downloading fresh: %v", err)
-			avatarData = nil
-		}
+// saveAvatarURL saves the avatar URL to DB
+func saveAvatarURL(userID, url string) {
+	if url == "" {
+		return
 	}
-
-	// If no cache, download from Discord
-	if avatarData == nil {
-		resp, err := http.Get(avatarURL)
-		if err != nil {
-			return "", fmt.Errorf("failed to download avatar: %w", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != 200 {
-			return "", fmt.Errorf("failed to download avatar: status %d", resp.StatusCode)
-		}
-
-		avatarData, err = io.ReadAll(resp.Body)
-		if err != nil {
-			return "", fmt.Errorf("failed to read avatar data: %w", err)
-		}
-
-		// Cache it for future use
-		go cacheUserAvatar(userID, avatarURL)
+	avatar := model.AvatarCache{
+		UserID:    userID,
+		AvatarURL: url,
 	}
-
-	// Upload to CDN
-	filename := fmt.Sprintf("%s_%d.png", userID, time.Now().Unix())
-	cdnURL, err := uploadToCDN(avatarData, "senryu/avatars", filename, "image/png")
-	if err != nil {
-		return "", fmt.Errorf("failed to upload avatar to CDN: %w", err)
-	}
-
-	log.Printf("[Avatar CDN] Uploaded avatar for user %s: %s", userID, cdnURL)
-	return cdnURL, nil
+	db.DB.Save(&avatar)
 }

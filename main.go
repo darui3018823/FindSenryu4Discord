@@ -329,6 +329,6 @@ func cacheUserAvatarFromMember(s *discordgo.Session, guildID string, user *disco
 	member, _ := s.GuildMember(guildID, user.ID)
 	avatarURL := getMemberAvatarURL(member, user, "")
 	if avatarURL != "" {
-		cacheUserAvatar(user.ID, avatarURL)
+		saveAvatarURL(user.ID, avatarURL)
 	}
 }
