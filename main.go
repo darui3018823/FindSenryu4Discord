@@ -36,13 +36,18 @@ var (
 			Name: "川柳を画像化",
 			Type: discordgo.MessageApplicationCommand,
 		},
+		{
+			Name:        "miq-optout",
+			Description: "「詠め」の画像化時にアバター候補から除外・除外解除します",
+		},
 	}
 
 	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
-		"mute":   handleMuteCommand,
-		"unmute": handleUnmuteCommand,
-		"rank":   handleRankCommand,
-		"川柳を画像化": handleSenryuMiqContext,
+		"mute":       handleMuteCommand,
+		"unmute":     handleUnmuteCommand,
+		"rank":       handleRankCommand,
+		"川柳を画像化":     handleSenryuMiqContext,
+		"miq-optout": handleMiqOptOutCommand,
 	}
 )
 
@@ -250,6 +255,36 @@ func handleRankCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Embeds: []*discordgo.MessageEmbed{&embed},
+		},
+	})
+}
+
+func handleMiqOptOutCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	userID := i.Member.User.ID
+	isOptOut, err := service.ToggleOptOut(userID)
+	if err != nil {
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: fmt.Sprintf("エラーが発生しました: %v", err),
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	var msg string
+	if isOptOut {
+		msg = "「詠め」にアバター画像が選ばれないようにしました ✅"
+	} else {
+		msg = "「詠め」にアバター画像が選ばれるようにしました ⭕"
+	}
+
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: msg,
+			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
 }

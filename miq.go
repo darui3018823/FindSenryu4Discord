@@ -193,7 +193,21 @@ func handleSenryuMiqContext(s *discordgo.Session, i *discordgo.InteractionCreate
 		if err == nil && yomeMsg != nil {
 			// Randomly select one of the three authors
 			authorIDs := []string{yomeMsg.Author1ID, yomeMsg.Author2ID, yomeMsg.Author3ID}
-			selectedAuthorID := authorIDs[rand.Intn(len(authorIDs))]
+
+			// Filter out opted-out users
+			var candidates []string
+			for _, id := range authorIDs {
+				if !service.IsOptOut(id) {
+					candidates = append(candidates, id)
+				}
+			}
+
+			// If everyone opted out, candidates will be empty.
+			// In that case, we fall through to the default bot avatar logic.
+			var selectedAuthorID string
+			if len(candidates) > 0 {
+				selectedAuthorID = candidates[rand.Intn(len(candidates))]
+			}
 
 			user, err := s.User(selectedAuthorID)
 			if err == nil {
