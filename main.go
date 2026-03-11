@@ -343,17 +343,38 @@ func sliceUnique(target []string) (unique []string) {
 func getWriters(senryus []model.Senryu, guildID string, session *discordgo.Session) []string {
 	var writers []string
 	for _, senryu := range senryus {
-		member, err := session.GuildMember(guildID, senryu.AuthorID)
-		if err != nil {
-			continue
-		}
-		if member.Nick != "" {
-			writers = append(writers, member.Nick)
-		} else {
-			writers = append(writers, member.User.Username)
-		}
+		writers = append(writers, resolveWriterName(guildID, senryu.AuthorID, session))
 	}
 	return sliceUnique(writers)
+}
+
+func resolveWriterName(guildID, userID string, session *discordgo.Session) string {
+	member, err := session.GuildMember(guildID, userID)
+	if err == nil && member != nil {
+		if member.Nick != "" {
+			return member.Nick
+		}
+		if member.User != nil {
+			if member.User.GlobalName != "" {
+				return member.User.GlobalName
+			}
+			if member.User.Username != "" {
+				return member.User.Username
+			}
+		}
+	}
+
+	user, err := session.User(userID)
+	if err == nil && user != nil {
+		if user.GlobalName != "" {
+			return user.GlobalName
+		}
+		if user.Username != "" {
+			return user.Username
+		}
+	}
+
+	return fmt.Sprintf("<@%s>", userID)
 }
 
 // cacheUserAvatarFromMember caches a user's avatar for the MIQ feature
