@@ -62,6 +62,7 @@ func main() {
 	if err != nil {
 		log.Fatal("error creating Discord session")
 	}
+	dg.Identify.Intents |= dgo.IntentMessageContent
 	dg.AddHandler(messageCreate)
 	dg.AddHandler(interactionCreate)
 	err = dg.Open()
