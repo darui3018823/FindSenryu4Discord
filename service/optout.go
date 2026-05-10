@@ -2,48 +2,29 @@ package service
 
 import (
 	"github.com/u16-io/FindSenryu4Discord/db"
+	"github.com/u16-io/FindSenryu4Discord/model"
 )
-
-const optOutKey = "miq_optout"
 
 // IsOptOut checks if the user has opted out of being selected as an avatar candidate
 func IsOptOut(userID string) bool {
-	if db.LDB == nil {
+	var count int
+	if err := db.DB.Model(&model.OptOut{}).Where("user_id = ?", userID).Count(&count).Error; err != nil {
 		return false
 	}
-	// Check if userID is in the set
-	n, err := db.LDB.SIsMember([]byte(optOutKey), []byte(userID))
-	if err != nil {
-		return false
-	}
-	return n == 1
+	return count > 0
 }
 
 // ToggleOptOut toggles the opt-out status for the user
 // Returns true if the user is now opted out, false if opted in
 func ToggleOptOut(userID string) (bool, error) {
-	if db.LDB == nil {
-		return false, nil // Should not happen if db is init
-	}
-
-	isMember, err := db.LDB.SIsMember([]byte(optOutKey), []byte(userID))
-	if err != nil {
+	if IsOptOut(userID) {
+		// Currently opted out, remove from DB (Opt-in)
+		err := db.DB.Where("user_id = ?", userID).Delete(&model.OptOut{}).Error
 		return false, err
 	}
-
-	if isMember == 1 {
-		// Currently opted out, remove from set (Opt-in)
-		_, err := db.LDB.SRem([]byte(optOutKey), []byte(userID))
-		if err != nil {
-			return true, err // Still opted out on error
-		}
-		return false, nil
-	} else {
-		// Currently opted in, add to set (Opt-out)
-		_, err := db.LDB.SAdd([]byte(optOutKey), []byte(userID))
-		if err != nil {
-			return false, err // Still opted in on error
-		}
-		return true, nil
-	}
+	// Currently opted in, add to DB (Opt-out)
+	optout := model.OptOut{UserID: userID}
+	err := db.DB.Create(&optout).Error
+	return true, err
 }
+
