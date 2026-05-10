@@ -125,7 +125,6 @@ func FindWithOpt(text string, rule []int, opt *Opt) ([]string, error) {
 				}
 			}
 			tokens = tokens[:len(tokens)-(j-i)+1]
-			i = j
 		}
 	}
 
@@ -144,6 +143,7 @@ func FindWithOpt(text string, rule []int, opt *Opt) ([]string, error) {
 			if y == "、" {
 				continue
 			}
+			start = i + 1
 			pos = 0
 			ambigous = 0
 			sentence = ""
@@ -151,6 +151,7 @@ func FindWithOpt(text string, rule []int, opt *Opt) ([]string, error) {
 			continue
 		}
 		if r[pos] == rule[pos] && !isWord(c) {
+			start = i + 1
 			pos = 0
 			ambigous = 0
 			sentence = ""
@@ -176,7 +177,7 @@ func FindWithOpt(text string, rule []int, opt *Opt) ([]string, error) {
 			}
 			sentence += " "
 		} else if r[pos] < 0 {
-			i = start + 1
+			i = start
 			start++
 			pos = 0
 			ambigous = 0
