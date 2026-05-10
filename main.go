@@ -169,6 +169,26 @@ func messageCreate(s *dgo.Session, m *dgo.MessageCreate) {
 var medals = []string{"🥇", "🥈", "🥉", "🎖️", "🎖️"}
 
 func handleMuteCommand(s *dgo.Session, i *dgo.InteractionCreate) {
+	if service.IsMute(i.ChannelID) {
+		if err := service.ToUnMute(i.ChannelID); err != nil {
+			s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
+				Type: dgo.InteractionResponseChannelMessageWithSource,
+				Data: &dgo.InteractionResponseData{
+					Content: "ミュート解除に失敗しました ❌",
+					Flags:   dgo.MessageFlagsEphemeral,
+				},
+			})
+		} else {
+			s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
+				Type: dgo.InteractionResponseChannelMessageWithSource,
+				Data: &dgo.InteractionResponseData{
+					Content: "このチャンネルでの川柳検出のミュートを解除しました ✅",
+				},
+			})
+		}
+		return
+	}
+
 	if err := service.ToMute(i.ChannelID); err != nil {
 		s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
 			Type: dgo.InteractionResponseChannelMessageWithSource,
