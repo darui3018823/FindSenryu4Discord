@@ -9,4 +9,5 @@ data/
 
 FindSenryu4Discord
 *.out
+*.exe
 CDN_UPLOAD_SPEC.md
