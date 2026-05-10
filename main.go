@@ -119,49 +119,94 @@ func interactionCreate(s *dgo.Session, i *dgo.InteractionCreate) {
 }
 
 func messageCreate(s *dgo.Session, m *dgo.MessageCreate) {
-	if m.Author.Bot {
+	authorID := ""
+	authorName := ""
+	authorBot := false
+	if m.Author != nil {
+		authorID = m.Author.ID
+		authorName = m.Author.Username
+		authorBot = m.Author.Bot
+	}
+	log.Printf(
+		"[MessageCreate] id=%s guild=%s channel=%s author=%s username=%q bot=%t content=%q",
+		m.ID,
+		m.GuildID,
+		m.ChannelID,
+		authorID,
+		authorName,
+		authorBot,
+		m.Content,
+	)
+
+	if m.Author == nil {
+		log.Printf("[SenryuDetect] skip=missing_author message=%s", m.ID)
+		return
+	}
+
+	if authorBot {
+		log.Printf("[SenryuDetect] skip=author_is_bot message=%s", m.ID)
 		return
 	}
 
 	ch, err := s.Channel(m.ChannelID)
 	if err != nil {
-		fmt.Println(err)
+		log.Printf("[SenryuDetect] skip=channel_fetch_failed message=%s channel=%s err=%v", m.ID, m.ChannelID, err)
 		return
 	}
 
 	if ch.Type != dgo.ChannelTypeGuildText {
+		log.Printf("[SenryuDetect] skip=not_guild_text message=%s channel=%s type=%d", m.ID, m.ChannelID, ch.Type)
 		s.ChannelMessageSend(m.ChannelID, "個チャはダメです")
 		return
 	}
 
 	if handleYomeYomuna(m, s) {
+		log.Printf("[SenryuDetect] skip=handled_command message=%s content=%q", m.ID, m.Content)
 		return
 	}
 
-	if !service.IsMute(m.ChannelID) {
-		if m.Author.ID != s.State.User.ID {
-			h := haiku.Find(m.Content, []int{5, 7, 5})
-			if len(h) != 0 {
-				senryu := strings.Split(h[0], " ")
-				service.CreateSenryu(
-					model.Senryu{
-						ServerID:  m.GuildID,
-						AuthorID:  m.Author.ID,
-						Kamigo:    senryu[0],
-						Nakasichi: senryu[1],
-						Simogo:    senryu[2],
-					},
-				)
-				// Cache author's avatar for MIQ feature
-				go cacheUserAvatarFromMember(s, m.GuildID, m.Author)
-				s.ChannelMessageSendReply(
-					m.ChannelID,
-					fmt.Sprintf("川柳を検出しました！\n「%s」", h[0]),
-					m.Reference(),
-				)
-			}
-		}
+	if service.IsMute(m.ChannelID) {
+		log.Printf("[SenryuDetect] skip=channel_muted message=%s channel=%s", m.ID, m.ChannelID)
+		return
 	}
+
+	if m.Author.ID == s.State.User.ID {
+		log.Printf("[SenryuDetect] skip=self_message message=%s author=%s", m.ID, m.Author.ID)
+		return
+	}
+
+	h, err := haiku.FindWithOpt(m.Content, []int{5, 7, 5}, nil)
+	if err != nil {
+		log.Printf("[SenryuDetect] result=error message=%s err=%v content=%q", m.ID, err, m.Content)
+		return
+	}
+	if len(h) == 0 {
+		log.Printf("[SenryuDetect] result=no_match message=%s content=%q", m.ID, m.Content)
+		return
+	}
+
+	log.Printf("[SenryuDetect] result=match message=%s matches=%q selected=%q", m.ID, h, h[0])
+	senryu := strings.Split(h[0], " ")
+	if len(senryu) != 3 {
+		log.Printf("[SenryuDetect] result=invalid_match_format message=%s selected=%q parts=%q", m.ID, h[0], senryu)
+		return
+	}
+	service.CreateSenryu(
+		model.Senryu{
+			ServerID:  m.GuildID,
+			AuthorID:  m.Author.ID,
+			Kamigo:    senryu[0],
+			Nakasichi: senryu[1],
+			Simogo:    senryu[2],
+		},
+	)
+	// Cache author's avatar for MIQ feature
+	go cacheUserAvatarFromMember(s, m.GuildID, m.Author)
+	s.ChannelMessageSendReply(
+		m.ChannelID,
+		fmt.Sprintf("川柳を検出しました！\n「%s」", h[0]),
+		m.Reference(),
+	)
 }
 
 var medals = []string{"🥇", "🥈", "🥉", "🎖️", "🎖️"}
