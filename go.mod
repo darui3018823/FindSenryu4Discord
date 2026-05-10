@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/0x307e/go-haiku v0.0.0-20260102132348-2d52455731fb
-	github.com/darui3018823/discordgo v0.29.0-patched-2
+	github.com/darui3018823/dgo v0.30.2
 	github.com/jinzhu/gorm v1.9.16
 	github.com/joho/godotenv v1.5.1
 	github.com/ledisdb/ledisdb v0.0.0-20200510135210-d35789ec47e6
@@ -27,3 +27,5 @@ require (
 	golang.org/x/sys v0.39.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
+
+replace github.com/0x307e/go-haiku => ./go-haiku-local
