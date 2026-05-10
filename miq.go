@@ -430,6 +430,7 @@ func uploadToCDN(content []byte, subpath, filename, contentType string) (string,
 		}
 
 		req.Header.Set("Authorization", "Bearer "+cdnToken)
+		req.Header.Set("X-Return-Raw", "True")
 		req.Header.Set("Content-Type", "multipart/form-data; boundary="+boundary)
 
 		client := &http.Client{Timeout: 30 * time.Second}
