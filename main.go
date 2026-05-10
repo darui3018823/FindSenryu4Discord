@@ -14,6 +14,7 @@ import (
 	"github.com/u16-io/FindSenryu4Discord/service"
 
 	"github.com/0x307e/go-haiku"
+	"github.com/ikawaha/kagome-dict/ipa"
 	"github.com/darui3018823/dgo"
 	"github.com/u16-io/FindSenryu4Discord/config"
 )
@@ -55,6 +56,8 @@ func main() {
 	var (
 		err error
 	)
+
+	haiku.UseDict(ipa.Dict())
 
 	log.SetFlags(log.Lshortfile)
 	conf := config.GetConf()

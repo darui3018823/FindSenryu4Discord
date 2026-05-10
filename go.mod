@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/0x307e/go-haiku v0.0.0-20260412152945-f6db2b0cc6a6
 	github.com/darui3018823/dgo v0.30.2
+	github.com/ikawaha/kagome-dict/ipa v1.0.10
 	github.com/jinzhu/gorm v1.9.16
 	github.com/joho/godotenv v1.5.1
 	github.com/ledisdb/ledisdb v0.0.0-20200510135210-d35789ec47e6
