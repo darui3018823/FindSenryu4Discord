@@ -2,6 +2,10 @@
 
 > 本リポジトリは u16-io/FindSenryu4Discord をフォークした個人利用向けです。動作保証や利用推奨はしていません。
 
+> [!CAUTION]
+> 現在好評につき多数のサーバーに導入していただいているおかげで、新規追加ができなくなっています。  
+> Discordの審査待ちが終わるまでご迷惑をおかけしておりますが、今しばらくお待ちください。
+
 <p align="center">
   <img src="./.github/img/haiku.png" width="200" /><br />
   Discordで川柳を検出します

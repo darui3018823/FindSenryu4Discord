@@ -14,13 +14,12 @@ import (
 	"github.com/u16-io/FindSenryu4Discord/service"
 
 	"github.com/0x307e/go-haiku"
-	"github.com/ikawaha/kagome-dict/ipa"
-	"github.com/darui3018823/dgo"
+	"github.com/darui3018823/discordgo"
 	"github.com/u16-io/FindSenryu4Discord/config"
 )
 
 var (
-	commands = []*dgo.ApplicationCommand{
+	commands = []*discordgo.ApplicationCommand{
 		{
 			Name:        "mute",
 			Description: "このチャンネルでの川柳検出をミュートします",
@@ -35,7 +34,7 @@ var (
 		},
 		{
 			Name: "川柳を画像化",
-			Type: dgo.MessageApplicationCommand,
+			Type: discordgo.MessageApplicationCommand,
 		},
 		{
 			Name:        "miq-optout",
@@ -43,7 +42,7 @@ var (
 		},
 	}
 
-	commandHandlers = map[string]func(s *dgo.Session, i *dgo.InteractionCreate){
+	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
 		"mute":       handleMuteCommand,
 		"unmute":     handleUnmuteCommand,
 		"rank":       handleRankCommand,
@@ -57,11 +56,9 @@ func main() {
 		err error
 	)
 
-	haiku.UseDict(ipa.Dict())
-
 	log.SetFlags(log.Lshortfile)
 	conf := config.GetConf()
-	dg, err := dgo.New("Bot " + conf.Discord.Token)
+	dg, err := discordgo.New("Bot " + conf.Discord.Token)
 	if err != nil {
 		log.Fatal("error creating Discord session")
 	}
@@ -77,7 +74,7 @@ func main() {
 
 	// Register slash commands
 	log.Println("Registering slash commands...")
-	registeredCommands := make([]*dgo.ApplicationCommand, len(commands))
+	registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
 	for i, cmd := range commands {
 		rcmd, err := dg.ApplicationCommandCreate(dg.State.User.ID, "", cmd)
 		if err != nil {
@@ -114,13 +111,13 @@ func main() {
 	dg.Close()
 }
 
-func interactionCreate(s *dgo.Session, i *dgo.InteractionCreate) {
+func interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
 		h(s, i)
 	}
 }
 
-func messageCreate(s *dgo.Session, m *dgo.MessageCreate) {
+func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.Bot {
 		return
 	}
@@ -131,7 +128,7 @@ func messageCreate(s *dgo.Session, m *dgo.MessageCreate) {
 		return
 	}
 
-	if ch.Type != dgo.ChannelTypeGuildText {
+	if ch.Type != discordgo.ChannelTypeGuildText {
 		s.ChannelMessageSend(m.ChannelID, "個チャはダメです")
 		return
 	}
@@ -168,65 +165,45 @@ func messageCreate(s *dgo.Session, m *dgo.MessageCreate) {
 
 var medals = []string{"🥇", "🥈", "🥉", "🎖️", "🎖️"}
 
-func handleMuteCommand(s *dgo.Session, i *dgo.InteractionCreate) {
-	if service.IsMute(i.ChannelID) {
-		if err := service.ToUnMute(i.ChannelID); err != nil {
-			s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
-				Type: dgo.InteractionResponseChannelMessageWithSource,
-				Data: &dgo.InteractionResponseData{
-					Content: "ミュート解除に失敗しました ❌",
-					Flags:   dgo.MessageFlagsEphemeral,
-				},
-			})
-		} else {
-			s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
-				Type: dgo.InteractionResponseChannelMessageWithSource,
-				Data: &dgo.InteractionResponseData{
-					Content: "このチャンネルでの川柳検出のミュートを解除しました ✅",
-				},
-			})
-		}
-		return
-	}
-
+func handleMuteCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if err := service.ToMute(i.ChannelID); err != nil {
-		s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
-			Type: dgo.InteractionResponseChannelMessageWithSource,
-			Data: &dgo.InteractionResponseData{
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
 				Content: "ミュートに失敗しました ❌",
-				Flags:   dgo.MessageFlagsEphemeral,
+				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
 	} else {
-		s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
-			Type: dgo.InteractionResponseChannelMessageWithSource,
-			Data: &dgo.InteractionResponseData{
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
 				Content: "このチャンネルでの川柳検出をミュートしました ✅",
 			},
 		})
 	}
 }
 
-func handleUnmuteCommand(s *dgo.Session, i *dgo.InteractionCreate) {
+func handleUnmuteCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if err := service.ToUnMute(i.ChannelID); err != nil {
-		s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
-			Type: dgo.InteractionResponseChannelMessageWithSource,
-			Data: &dgo.InteractionResponseData{
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
 				Content: "ミュート解除に失敗しました ❌",
-				Flags:   dgo.MessageFlagsEphemeral,
+				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
 	} else {
-		s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
-			Type: dgo.InteractionResponseChannelMessageWithSource,
-			Data: &dgo.InteractionResponseData{
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
 				Content: "このチャンネルでの川柳検出のミュートを解除しました ✅",
 			},
 		})
 	}
 }
 
-func handleRankCommand(s *dgo.Session, i *dgo.InteractionCreate) {
+func handleRankCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	var (
 		ranks  []service.RankResult
 		errArr []error
@@ -234,32 +211,32 @@ func handleRankCommand(s *dgo.Session, i *dgo.InteractionCreate) {
 
 	if ranks, errArr = service.GetRanking(i.GuildID); len(errArr) != 0 {
 		fmt.Println(errArr)
-		s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
-			Type: dgo.InteractionResponseChannelMessageWithSource,
-			Data: &dgo.InteractionResponseData{
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
 				Content: "ランキングの取得に失敗しました",
-				Flags:   dgo.MessageFlagsEphemeral,
+				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
 		return
 	}
 
-	embed := dgo.MessageEmbed{
-		Type:      dgo.EmbedTypeRich,
+	embed := discordgo.MessageEmbed{
+		Type:      discordgo.EmbedTypeRich,
 		Title:     "サーバー内ランキング",
 		Timestamp: time.Now().Format(time.RFC3339),
-		Footer: &dgo.MessageEmbedFooter{
+		Footer: &discordgo.MessageEmbedFooter{
 			Text:    "This bot was made by 0x307e.",
 			IconURL: "https://github.com/0x307e.png",
 		},
-		Thumbnail: &dgo.MessageEmbedThumbnail{
+		Thumbnail: &discordgo.MessageEmbedThumbnail{
 			URL: s.State.User.AvatarURL(""),
 		},
-		Author: &dgo.MessageEmbedAuthor{
+		Author: &discordgo.MessageEmbedAuthor{
 			Name:    i.Member.User.Username,
 			IconURL: i.Member.User.AvatarURL(""),
 		},
-		Fields: []*dgo.MessageEmbedField{},
+		Fields: []*discordgo.MessageEmbedField{},
 	}
 
 	for _, rank := range ranks {
@@ -267,30 +244,30 @@ func handleRankCommand(s *dgo.Session, i *dgo.InteractionCreate) {
 		if err != nil {
 			continue
 		}
-		embed.Fields = append(embed.Fields, &dgo.MessageEmbedField{
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
 			Name:   fmt.Sprintf("%s 第%d位: %d回", medals[rank.Rank-1], rank.Rank, rank.Count),
 			Value:  user.Username,
 			Inline: true,
 		})
 	}
 
-	s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
-		Type: dgo.InteractionResponseChannelMessageWithSource,
-		Data: &dgo.InteractionResponseData{
-			Embeds: []*dgo.MessageEmbed{&embed},
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: []*discordgo.MessageEmbed{&embed},
 		},
 	})
 }
 
-func handleMiqOptOutCommand(s *dgo.Session, i *dgo.InteractionCreate) {
+func handleMiqOptOutCommand(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	userID := i.Member.User.ID
 	isOptOut, err := service.ToggleOptOut(userID)
 	if err != nil {
-		s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
-			Type: dgo.InteractionResponseChannelMessageWithSource,
-			Data: &dgo.InteractionResponseData{
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
 				Content: fmt.Sprintf("エラーが発生しました: %v", err),
-				Flags:   dgo.MessageFlagsEphemeral,
+				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
 		return
@@ -303,16 +280,16 @@ func handleMiqOptOutCommand(s *dgo.Session, i *dgo.InteractionCreate) {
 		msg = "「詠め」にアバター画像が選ばれるようにしました ⭕"
 	}
 
-	s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
-		Type: dgo.InteractionResponseChannelMessageWithSource,
-		Data: &dgo.InteractionResponseData{
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
 			Content: msg,
-			Flags:   dgo.MessageFlagsEphemeral,
+			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})
 }
 
-func handleYomeYomuna(m *dgo.MessageCreate, s *dgo.Session) bool {
+func handleYomeYomuna(m *discordgo.MessageCreate, s *discordgo.Session) bool {
 	var errArr []error
 	switch m.Content {
 	case "詠め":
@@ -363,7 +340,7 @@ func sliceUnique(target []string) (unique []string) {
 	return unique
 }
 
-func getWriters(senryus []model.Senryu, guildID string, session *dgo.Session) []string {
+func getWriters(senryus []model.Senryu, guildID string, session *discordgo.Session) []string {
 	var writers []string
 	for _, senryu := range senryus {
 		writers = append(writers, resolveWriterName(guildID, senryu.AuthorID, session))
@@ -371,7 +348,7 @@ func getWriters(senryus []model.Senryu, guildID string, session *dgo.Session) []
 	return sliceUnique(writers)
 }
 
-func resolveWriterName(guildID, userID string, session *dgo.Session) string {
+func resolveWriterName(guildID, userID string, session *discordgo.Session) string {
 	member, err := session.GuildMember(guildID, userID)
 	if err == nil && member != nil {
 		if member.Nick != "" {
@@ -401,7 +378,7 @@ func resolveWriterName(guildID, userID string, session *dgo.Session) string {
 }
 
 // cacheUserAvatarFromMember caches a user's avatar for the MIQ feature
-func cacheUserAvatarFromMember(s *dgo.Session, guildID string, user *dgo.User) {
+func cacheUserAvatarFromMember(s *discordgo.Session, guildID string, user *discordgo.User) {
 	if user == nil {
 		return
 	}

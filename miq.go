@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/darui3018823/dgo"
+	"github.com/darui3018823/discordgo"
 	"github.com/u16-io/FindSenryu4Discord/config"
 	"github.com/u16-io/FindSenryu4Discord/db"
 	"github.com/u16-io/FindSenryu4Discord/model"
@@ -90,7 +90,7 @@ func parseSenryuMessage(content string) (senryuType, string, string) {
 }
 
 // getMemberAvatarURL prioritizes Guild Avatar -> User Avatar -> Default
-func getMemberAvatarURL(member *dgo.Member, user *dgo.User, defaultURL string) string {
+func getMemberAvatarURL(member *discordgo.Member, user *discordgo.User, defaultURL string) string {
 	if member != nil && member.Avatar != "" {
 		return fmt.Sprintf("https://cdn.discordapp.com/guilds/%s/users/%s/avatars/%s.png?size=1024", member.GuildID, user.ID, member.Avatar)
 	}
@@ -101,17 +101,17 @@ func getMemberAvatarURL(member *dgo.Member, user *dgo.User, defaultURL string) s
 }
 
 // handleSenryuMiqContext handles the context menu for senryu image generation
-func handleSenryuMiqContext(s *dgo.Session, i *dgo.InteractionCreate) {
+func handleSenryuMiqContext(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	log.Printf("[Senryu MIQ] Called by %s", i.Member.User.Username)
 
 	// Check if required settings are configured
 	conf := config.GetConf()
 	if conf.CDN.QuoteAPIURL == "" || conf.CDN.Token == "" || conf.CDN.UploadURL == "" {
-		s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
-			Type: dgo.InteractionResponseChannelMessageWithSource,
-			Data: &dgo.InteractionResponseData{
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
 				Content: "この機能は現在設定されていません。",
-				Flags:   dgo.MessageFlagsEphemeral,
+				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
 		return
@@ -122,11 +122,11 @@ func handleSenryuMiqContext(s *dgo.Session, i *dgo.InteractionCreate) {
 	targetMsg := data.Resolved.Messages[targetMsgID]
 
 	if targetMsg == nil {
-		s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
-			Type: dgo.InteractionResponseChannelMessageWithSource,
-			Data: &dgo.InteractionResponseData{
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
 				Content: "対象のメッセージが見つかりませんでした。",
-				Flags:   dgo.MessageFlagsEphemeral,
+				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
 		return
@@ -134,11 +134,11 @@ func handleSenryuMiqContext(s *dgo.Session, i *dgo.InteractionCreate) {
 
 	// Check if message is from bot
 	if targetMsg.Author.ID != s.State.User.ID {
-		s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
-			Type: dgo.InteractionResponseChannelMessageWithSource,
-			Data: &dgo.InteractionResponseData{
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
 				Content: "川柳Botのメッセージのみ対応しています。",
-				Flags:   dgo.MessageFlagsEphemeral,
+				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
 		return
@@ -147,19 +147,19 @@ func handleSenryuMiqContext(s *dgo.Session, i *dgo.InteractionCreate) {
 	// Parse the message
 	msgType, senryuText, mentionedUserID := parseSenryuMessage(targetMsg.Content)
 	if msgType == senryuTypeUnknown || senryuText == "" {
-		s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
-			Type: dgo.InteractionResponseChannelMessageWithSource,
-			Data: &dgo.InteractionResponseData{
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
 				Content: "川柳のメッセージを解析できませんでした。",
-				Flags:   dgo.MessageFlagsEphemeral,
+				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
 		return
 	}
 
 	// Defer response
-	s.InteractionRespond(i.Interaction, &dgo.InteractionResponse{
-		Type: dgo.InteractionResponseDeferredChannelMessageWithSource,
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 	})
 
 	var avatarURL, username, displayName string
@@ -296,13 +296,13 @@ func handleSenryuMiqContext(s *dgo.Session, i *dgo.InteractionCreate) {
 		} else {
 			responseMsg = fmt.Sprintf("エラーが発生しました: %v", err)
 		}
-		s.FollowupMessageCreate(i.Interaction, true, &dgo.WebhookParams{
+		s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 			Content: responseMsg,
 		})
 		return
 	}
 
-	s.FollowupMessageCreate(i.Interaction, true, &dgo.WebhookParams{
+	s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 		Content: cdnURL,
 	})
 }
