@@ -12,8 +12,12 @@ var (
 	reIgnoreText = regexp.MustCompile(`[\[\]「」『』]`)
 	reIgnoreChar = regexp.MustCompile(`[ァィゥェォャュョ]`)
 	reKana       = regexp.MustCompile(`[ァ-タダ-ヶ]`)
+	reKanaText   = regexp.MustCompile(`^[ぁ-ゖァ-ヾー]+$`)
+	reSmallKana  = regexp.MustCompile(`[ぁぃぅぇぉゃゅょァィゥェォャュョ]`)
 	args         = mecab.NewArgs()
 )
+
+const maxSurfaceOverage = 2
 
 func isEnd(c []string) bool {
 	return c[1] != "非自立" && !strings.HasPrefix(c[5], "連用") && c[5] != "未然形"
@@ -43,6 +47,15 @@ func isWord(c []string) bool {
 // countChars return count of characters with ignoring japanese small letters.
 func countChars(s string) int {
 	return len([]rune(reIgnoreChar.ReplaceAllString(s, "")))
+}
+
+func isClearlyOverlongSurface(s string, target int) bool {
+	s = strings.ReplaceAll(s, " ", "")
+	if s == "" || !reKanaText.MatchString(s) {
+		return false
+	}
+	n := len([]rune(reSmallKana.ReplaceAllString(s, "")))
+	return n > target+maxSurfaceOverage
 }
 
 // Match return true when text matches with rule(s).
@@ -104,6 +117,7 @@ func FindWithOpt(text string, rule []int, opt *Opt) ([]string, error) {
 	r := make([]int, len(rule))
 	copy(r, rule)
 	sentence := ""
+	phrase := ""
 	start := 0
 	ambigous := 0
 
@@ -147,6 +161,7 @@ func FindWithOpt(text string, rule []int, opt *Opt) ([]string, error) {
 			pos = 0
 			ambigous = 0
 			sentence = ""
+			phrase = ""
 			copy(r, rule)
 			continue
 		}
@@ -155,6 +170,7 @@ func FindWithOpt(text string, rule []int, opt *Opt) ([]string, error) {
 			pos = 0
 			ambigous = 0
 			sentence = ""
+			phrase = ""
 			copy(r, rule)
 			continue
 		}
@@ -162,7 +178,18 @@ func FindWithOpt(text string, rule []int, opt *Opt) ([]string, error) {
 		n := countChars(y)
 		r[pos] -= n
 		sentence += tok.Surface
+		phrase += tok.Surface
 		if r[pos] >= 0 && (r[pos] == 0 || r[pos]+ambigous == 0) {
+			if isClearlyOverlongSurface(phrase, rule[pos]) {
+				i = start
+				start++
+				pos = 0
+				ambigous = 0
+				sentence = ""
+				phrase = ""
+				copy(r, rule)
+				continue
+			}
 			pos++
 			if pos == len(r) || pos == len(r)+1 {
 				if isEnd(c) {
@@ -172,16 +199,19 @@ func FindWithOpt(text string, rule []int, opt *Opt) ([]string, error) {
 				pos = 0
 				ambigous = 0
 				sentence = ""
+				phrase = ""
 				copy(r, rule)
 				continue
 			}
 			sentence += " "
+			phrase = ""
 		} else if r[pos] < 0 {
 			i = start
 			start++
 			pos = 0
 			ambigous = 0
 			sentence = ""
+			phrase = ""
 			copy(r, rule)
 		}
 	}
