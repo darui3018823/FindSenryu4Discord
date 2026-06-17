@@ -322,12 +322,18 @@ func handleYomeYomuna(m *dgo.MessageCreate, s *dgo.Session) bool {
 		if len(senryus) == 0 {
 			s.ChannelMessageSend(m.ChannelID, "まだ誰も詠んでいません。あなたが先に詠んでください。")
 		} else {
-			msg, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("ここで一句\n「%s」\n詠み手: %s",
-				strings.Join([]string{
-					senryus[0].Kamigo,
-					senryus[1].Nakasichi,
-					senryus[2].Simogo,
-				}, " "), strings.Join(getWriters(senryus, m.GuildID, s), ", ")))
+			msg, err := s.ChannelMessageSendComplex(m.ChannelID, &dgo.MessageSend{
+				Content: fmt.Sprintf("ここで一句\n「%s」\n詠み手: %s",
+					strings.Join([]string{
+						senryus[0].Kamigo,
+						senryus[1].Nakasichi,
+						senryus[2].Simogo,
+					}, " "), strings.Join(getWriters(senryus, m.GuildID, s), ", ")),
+				AllowedMentions: &dgo.MessageAllowedMentions{
+					Parse: []dgo.AllowedMentionType{dgo.AllowedMentionTypeUsers},
+				},
+				Flags: dgo.MessageFlagsSuppressEmbeds,
+			})
 			if err == nil && msg != nil {
 				// Save author IDs for MIQ lookup
 				service.SaveYomeMessage(msg.ID, senryus[0].AuthorID, senryus[1].AuthorID, senryus[2].AuthorID)
