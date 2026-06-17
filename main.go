@@ -154,11 +154,14 @@ func messageCreate(s *dgo.Session, m *dgo.MessageCreate) {
 				)
 				// Cache author's avatar for MIQ feature
 				go cacheUserAvatarFromMember(s, m.GuildID, m.Author)
-				s.ChannelMessageSendReply(
-					m.ChannelID,
-					fmt.Sprintf("川柳を検出しました！\n「%s」", h[0]),
-					m.Reference(),
-				)
+				s.ChannelMessageSendComplex(m.ChannelID, &dgo.MessageSend{
+					Content:   fmt.Sprintf("川柳を検出しました！\n「%s」", h[0]),
+					Reference: m.Reference(),
+					AllowedMentions: &dgo.MessageAllowedMentions{
+						Parse: []dgo.AllowedMentionType{},
+					},
+					Flags: dgo.MessageFlagsSuppressEmbeds,
+				})
 			}
 		}
 	}
@@ -330,7 +333,7 @@ func handleYomeYomuna(m *dgo.MessageCreate, s *dgo.Session) bool {
 						senryus[2].Simogo,
 					}, " "), strings.Join(getWriters(senryus, m.GuildID, s), ", ")),
 				AllowedMentions: &dgo.MessageAllowedMentions{
-					Parse: []dgo.AllowedMentionType{dgo.AllowedMentionTypeUsers},
+					Parse: []dgo.AllowedMentionType{},
 				},
 				Flags: dgo.MessageFlagsSuppressEmbeds,
 			})
@@ -345,11 +348,14 @@ func handleYomeYomuna(m *dgo.MessageCreate, s *dgo.Session) bool {
 		if senryu, errArr = service.GetLastSenryu(m.GuildID, m.Author.ID); len(errArr) != 0 {
 			s.MessageReactionAdd(m.ChannelID, m.ID, "❌")
 		} else {
-			s.ChannelMessageSendReply(
-				m.ChannelID,
-				senryu,
-				m.Reference(),
-			)
+			s.ChannelMessageSendComplex(m.ChannelID, &dgo.MessageSend{
+				Content:   senryu,
+				Reference: m.Reference(),
+				AllowedMentions: &dgo.MessageAllowedMentions{
+					Parse: []dgo.AllowedMentionType{},
+				},
+				Flags: dgo.MessageFlagsSuppressEmbeds,
+			})
 		}
 		return true
 	}
