@@ -27,4 +27,3 @@ func ToMute(id string) error {
 func ToUnMute(id string) error {
 	return db.DB.Where("channel_id = ?", id).Delete(&model.Mute{}).Error
 }
-

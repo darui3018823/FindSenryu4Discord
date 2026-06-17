@@ -5,9 +5,9 @@ import (
 	"os"
 
 	"github.com/jinzhu/gorm"
-	"github.com/u16-io/FindSenryu4Discord/model"
 	lediscfg "github.com/ledisdb/ledisdb/config"
 	"github.com/ledisdb/ledisdb/ledis"
+	"github.com/u16-io/FindSenryu4Discord/model"
 
 	// SQLite3 driver for Gorm
 	_ "github.com/mattn/go-sqlite3"

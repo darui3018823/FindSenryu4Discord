@@ -27,4 +27,3 @@ func ToggleOptOut(userID string) (bool, error) {
 	err := db.DB.Create(&optout).Error
 	return true, err
 }
-
