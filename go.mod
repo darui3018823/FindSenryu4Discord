@@ -3,15 +3,16 @@ module github.com/u16-io/FindSenryu4Discord
 go 1.24.0
 
 require (
-	github.com/0x307e/go-haiku v0.0.0-20260102132348-2d52455731fb
-	github.com/darui3018823/dgo v0.30.2
+	github.com/0x307e/go-haiku v0.0.0-20260412152945-f6db2b0cc6a6
+	github.com/darui3018823/dgo v0.30.6
 	github.com/jinzhu/gorm v1.9.16
 	github.com/joho/godotenv v1.5.1
 	github.com/ledisdb/ledisdb v0.0.0-20200510135210-d35789ec47e6
-	github.com/mattn/go-sqlite3 v1.14.33
+	github.com/mattn/go-sqlite3 v1.14.45
 )
 
 require (
+	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cupcake/rdb v0.0.0-20161107195141-43ba34106c76 // indirect
 	github.com/edsrzf/mmap-go v1.2.0 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
